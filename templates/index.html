@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}PlaceHub – Campus Placement Portal{% endblock %}
+{% block content %}
+
+<div class="hero">
+  <div class="hero-tag">🎓 Campus Recruitment Platform</div>
+  <h1>Connect Talent<br/>with Opportunity</h1>
+  <p>A streamlined placement portal for students, recruiters, and administrators — all in one place.</p>
+</div>
+
+<div class="container">
+  <div class="cards-grid">
+
+    <div class="card">
+      <div class="card-icon blue">🎓</div>
+      <h3>Students</h3>
+      <p>Browse jobs, upload your resume, apply in one click, and track every application in real time.</p>
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+        <a href="{{ url_for('student_login') }}" class="btn btn-primary btn-sm">Login</a>
+        <a href="{{ url_for('student_register') }}" class="btn btn-outline btn-sm">Register</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-icon green">🏢</div>
+      <h3>Recruiters</h3>
+      <p>Post job openings, set eligibility criteria, review applicant resumes, and manage hiring decisions.</p>
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+        <a href="{{ url_for('recruiter_login') }}" class="btn btn-success btn-sm">Login</a>
+        <a href="{{ url_for('recruiter_register') }}" class="btn btn-outline btn-sm">Register</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-icon orange">🔒</div>
+      <h3>Administrators</h3>
+      <p>Oversee all students, recruiters, jobs and applications with full control and oversight.</p>
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+        <a href="{{ url_for('admin_login') }}" class="btn btn-warning btn-sm">Admin Login</a>
+      </div>
+    </div>
+
+  </div>
+
+  <hr class="divider" style="margin-top:3rem;"/>
+
+  <div style="text-align:center;color:var(--muted);font-size:.85rem;padding:1rem 0 2rem;">
+    Built with Flask &amp; MongoDB &nbsp;•&nbsp; PlaceHub Campus Portal
+  </div>
+</div>
+
+{% endblock %}

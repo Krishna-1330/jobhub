@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Applications – PlaceHub{% endblock %}
+{% block content %}
+<div class="container">
+
+  <div class="page-header">
+    <div>
+      <h2>Job Applications</h2>
+      <p>{{ applications|length }} total applications received</p>
+    </div>
+    <a href="{{ url_for('recruiter_dashboard') }}" class="btn btn-outline btn-sm">← Dashboard</a>
+  </div>
+
+  {% if applications %}
+    {% for a in applications %}
+    <div class="job-card">
+      <div class="job-card-header">
+        <div>
+          <h3 style="font-size:1rem;">{{ a.student.name }}</h3>
+          <div style="color:var(--muted);font-size:.85rem;">
+            {{ a.student.email }} &nbsp;•&nbsp; {{ a.student.branch }} &nbsp;•&nbsp; CGPA: {{ a.student.cgpa }}
+          </div>
+        </div>
+        <span class="badge badge-{{ a.status }}">{{ a.status }}</span>
+      </div>
+
+      <div class="job-meta" style="margin-bottom:.6rem;">
+        <span>💼 {{ a.job.title }}</span>
+        <span>📅 Applied: {{ a.applied_at.strftime('%d %b %Y') }}</span>
+        {% if a.student.resume %}<span>📎 Resume on file</span>{% endif %}
+      </div>
+
+      {% if a.cover_letter %}
+        <p style="font-size:.88rem;color:var(--muted);margin-bottom:.8rem;font-style:italic;">
+          "{{ a.cover_letter[:250] }}{% if a.cover_letter|length > 250 %}…{% endif %}"
+        </p>
+      {% endif %}
+
+      {% if a.status == 'pending' %}
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+          <a href="{{ url_for('update_application_status', app_id=a._id, status='accepted') }}"
+             class="btn btn-success btn-sm">✔ Accept</a>
+          <a href="{{ url_for('update_application_status', app_id=a._id, status='rejected') }}"
+             onclick="return confirm('Reject this application?')"
+             class="btn btn-danger btn-sm">✖ Reject</a>
+        </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">📭</div>
+      <p>No applications received yet.</p>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Post a Job – PlaceHub{% endblock %}
+{% block content %}
+<div class="container-sm">
+  <div class="form-card">
+    <h2>📋 Post a New Job</h2>
+    <form method="POST" action="{{ url_for('post_job') }}">
+      <div class="form-group">
+        <label>Job Title</label>
+        <input type="text" name="title" class="form-control" placeholder="Software Engineer Intern" required/>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Salary / CTC</label>
+          <input type="text" name="salary" class="form-control" placeholder="₹8 LPA" required/>
+        </div>
+        <div class="form-group">
+          <label>Location</label>
+          <input type="text" name="location" class="form-control" placeholder="Bengaluru, Remote"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Eligibility Criteria</label>
+        <input type="text" name="eligibility" class="form-control" placeholder="CGPA ≥ 7.5, CSE/IT branches" required/>
+      </div>
+      <div class="form-group">
+        <label>Application Deadline</label>
+        <input type="date" name="deadline" class="form-control" required/>
+      </div>
+      <div class="form-group">
+        <label>Job Description</label>
+        <textarea name="description" class="form-control" placeholder="Describe roles, responsibilities, tech stack…" required></textarea>
+      </div>
+      <button type="submit" class="btn btn-success btn-full">Post Job</button>
+    </form>
+    <div class="form-footer">
+      <a href="{{ url_for('recruiter_dashboard') }}">← Back to Dashboard</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

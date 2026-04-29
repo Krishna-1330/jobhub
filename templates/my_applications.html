@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}My Applications – PlaceHub{% endblock %}
+{% block content %}
+<div class="container">
+
+  <div class="page-header">
+    <div>
+      <h2>My Applications</h2>
+      <p>Track the status of all your job applications</p>
+    </div>
+    <a href="{{ url_for('view_jobs') }}" class="btn btn-primary btn-sm">Browse More Jobs</a>
+  </div>
+
+  {% if applications %}
+    {% for a in applications %}
+    <div class="job-card">
+      <div class="job-card-header">
+        <div>
+          <h3>{{ a.job_title }}</h3>
+          <div style="color:var(--muted);font-size:.88rem;">{{ a.company }}</div>
+        </div>
+        <span class="badge badge-{{ a.status }}">{{ a.status }}</span>
+      </div>
+
+      <div class="job-meta">
+        <span>💰 {{ a.job.salary }}</span>
+        <span>📍 {{ a.job.location or 'N/A' }}</span>
+        <span>📅 Applied: {{ a.applied_at.strftime('%d %b %Y') }}</span>
+      </div>
+
+      {% if a.status == 'accepted' %}
+        <p style="color:var(--success);font-size:.9rem;font-weight:600;">🎉 Congratulations! Your application was accepted.</p>
+      {% elif a.status == 'rejected' %}
+        <p style="color:var(--danger);font-size:.9rem;">Your application was not selected this time. Keep applying!</p>
+      {% else %}
+        <p style="color:var(--warning);font-size:.9rem;">⏳ Your application is under review.</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">📄</div>
+      <p>You haven't applied to any jobs yet. <a href="{{ url_for('view_jobs') }}">Browse openings</a>.</p>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

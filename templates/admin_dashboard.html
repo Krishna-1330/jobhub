@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard – PlaceHub{% endblock %}
+{% block content %}
+<div class="container">
+
+  <div class="page-header">
+    <div>
+      <h2>🔒 Admin Dashboard</h2>
+      <p>Full system oversight and control</p>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-num">{{ students|length }}</div>
+      <div class="stat-label">Students</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">{{ recruiters|length }}</div>
+      <div class="stat-label">Recruiters</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">{{ jobs|length }}</div>
+      <div class="stat-label">Jobs</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">{{ applications|length }}</div>
+      <div class="stat-label">Applications</div>
+    </div>
+  </div>
+
+  <!-- Students -->
+  <div class="table-wrap">
+    <h3>All Students</h3>
+    {% if students %}
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th><th>Email</th><th>Branch</th><th>CGPA</th><th>Resume</th><th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in students %}
+        <tr>
+          <td>{{ s.name }}</td>
+          <td>{{ s.email }}</td>
+          <td>{{ s.branch }}</td>
+          <td>{{ s.cgpa }}</td>
+          <td>{% if s.resume %}<span style="color:var(--success)">✔</span>{% else %}—{% endif %}</td>
+          <td>
+            <a href="{{ url_for('delete_student', sid=s._id) }}"
+               onclick="return confirm('Delete student {{ s.name }}?')"
+               class="btn btn-danger btn-sm">Delete</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div class="empty-state"><p>No students registered yet.</p></div>
+    {% endif %}
+  </div>
+
+  <!-- Recruiters -->
+  <div class="table-wrap">
+    <h3>All Recruiters</h3>
+    {% if recruiters %}
+    <table>
+      <thead>
+        <tr><th>Name</th><th>Email</th><th>Company</th><th>Phone</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        {% for r in recruiters %}
+        <tr>
+          <td>{{ r.name }}</td>
+          <td>{{ r.email }}</td>
+          <td>{{ r.company }}</td>
+          <td>{{ r.phone }}</td>
+          <td>
+            <a href="{{ url_for('delete_recruiter', rid=r._id) }}"
+               onclick="return confirm('Delete recruiter {{ r.name }} and all their jobs?')"
+               class="btn btn-danger btn-sm">Delete</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div class="empty-state"><p>No recruiters registered yet.</p></div>
+    {% endif %}
+  </div>
+
+  <!-- Jobs -->
+  <div class="table-wrap">
+    <h3>All Jobs</h3>
+    {% if jobs %}
+    <table>
+      <thead>
+        <tr><th>Title</th><th>Company</th><th>Salary</th><th>Deadline</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        {% for j in jobs %}
+        <tr>
+          <td>{{ j.title }}</td>
+          <td>{{ j.company }}</td>
+          <td>{{ j.salary }}</td>
+          <td>{{ j.deadline }}</td>
+          <td>
+            <a href="{{ url_for('delete_job', jid=j._id) }}"
+               onclick="return confirm('Delete job {{ j.title }}?')"
+               class="btn btn-danger btn-sm">Delete</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div class="empty-state"><p>No jobs posted yet.</p></div>
+    {% endif %}
+  </div>
+
+  <!-- Applications -->
+  <div class="table-wrap">
+    <h3>All Applications</h3>
+    {% if applications %}
+    <table>
+      <thead>
+        <tr><th>Student</th><th>Job</th><th>Company</th><th>Status</th><th>Applied</th></tr>
+      </thead>
+      <tbody>
+        {% for a in applications %}
+        <tr>
+          <td>{{ a.student_name }}</td>
+          <td>{{ a.job_title }}</td>
+          <td>{{ a.company }}</td>
+          <td><span class="badge badge-{{ a.status }}">{{ a.status }}</span></td>
+          <td style="color:var(--muted);font-size:.82rem;">{{ a.applied_at.strftime('%d %b %Y') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div class="empty-state"><p>No applications yet.</p></div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

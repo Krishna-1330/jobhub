@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Browse Jobs – PlaceHub{% endblock %}
+{% block content %}
+<div class="container">
+
+  <div class="page-header">
+    <div>
+      <h2>Available Jobs</h2>
+      <p>{{ jobs|length }} openings listed</p>
+    </div>
+    <a href="{{ url_for('student_dashboard') }}" class="btn btn-outline btn-sm">← Dashboard</a>
+  </div>
+
+  {% if jobs %}
+    {% for job in jobs %}
+    <div class="job-card">
+      <div class="job-card-header">
+        <div>
+          <h3>{{ job.title }}</h3>
+          <div style="color:var(--muted);font-size:.88rem;">{{ job.company }}</div>
+        </div>
+        {% if job._id|string in applied_ids %}
+          <span class="badge badge-accepted" style="white-space:nowrap;">Applied ✔</span>
+        {% else %}
+          <a href="{{ url_for('apply_job', job_id=job._id) }}" class="btn btn-primary btn-sm">Apply Now</a>
+        {% endif %}
+      </div>
+
+      <div class="job-meta">
+        <span>💰 {{ job.salary }}</span>
+        <span>📍 {{ job.location or 'Not specified' }}</span>
+        <span>📅 Deadline: {{ job.deadline }}</span>
+        <span>🎓 {{ job.eligibility }}</span>
+      </div>
+
+      <p style="color:var(--muted);font-size:.88rem;line-height:1.5;">
+        {{ job.description[:200] }}{% if job.description|length > 200 %}…{% endif %}
+      </p>
+    </div>
+    {% endfor %}
+
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">🔍</div>
+      <p>No jobs are currently listed. Check back soon!</p>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

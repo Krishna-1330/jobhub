@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Recruiter Dashboard – PlaceHub{% endblock %}
+{% block content %}
+<div class="container">
+
+  <div class="page-header">
+    <div>
+      <h2>Welcome, {{ recruiter.name }} 👋</h2>
+      <p>{{ recruiter.company }} &nbsp;•&nbsp; {{ recruiter.email }}</p>
+    </div>
+    <a href="{{ url_for('post_job') }}" class="btn btn-success">+ Post New Job</a>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-num">{{ jobs|length }}</div>
+      <div class="stat-label">Jobs Posted</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">{{ app_count }}</div>
+      <div class="stat-label">Total Applications</div>
+    </div>
+  </div>
+
+  <!-- Jobs List -->
+  {% if jobs %}
+    <div class="table-wrap">
+      <h3>Your Job Postings</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Salary</th>
+            <th>Location</th>
+            <th>Deadline</th>
+            <th>Posted</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for job in jobs %}
+          <tr>
+            <td><strong>{{ job.title }}</strong></td>
+            <td>{{ job.salary }}</td>
+            <td>{{ job.location or '—' }}</td>
+            <td>{{ job.deadline }}</td>
+            <td style="color:var(--muted);font-size:.82rem;">{{ job.posted_at.strftime('%d %b %Y') }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">📋</div>
+      <p>No jobs posted yet. <a href="{{ url_for('post_job') }}">Post your first job</a>.</p>
+    </div>
+  {% endif %}
+
+  <div style="margin-top:1rem;">
+    <a href="{{ url_for('view_applications') }}" class="btn btn-outline">View All Applications</a>
+  </div>
+
+</div>
+{% endblock %}

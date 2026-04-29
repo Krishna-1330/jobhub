@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Apply – {{ job.title }} – PlaceHub{% endblock %}
+{% block content %}
+<div class="container-sm">
+  <div class="form-card">
+    <h2>Apply for Position</h2>
+
+    <!-- Job details card -->
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:1.1rem;margin-bottom:1.5rem;">
+      <h3 style="font-size:1.1rem;margin-bottom:.3rem;">{{ job.title }}</h3>
+      <div style="color:var(--muted);font-size:.88rem;margin-bottom:.6rem;">{{ job.company }}</div>
+      <div class="job-meta" style="margin:0;">
+        <span>💰 {{ job.salary }}</span>
+        <span>📍 {{ job.location or 'N/A' }}</span>
+        <span>📅 {{ job.deadline }}</span>
+      </div>
+      <hr class="divider"/>
+      <p style="font-size:.88rem;color:var(--muted);"><strong style="color:var(--text);">Eligibility:</strong> {{ job.eligibility }}</p>
+      <p style="font-size:.88rem;color:var(--muted);margin-top:.5rem;">{{ job.description }}</p>
+    </div>
+
+    <form method="POST" action="{{ url_for('apply_job', job_id=job._id) }}">
+      <div class="form-group">
+        <label>Cover Letter <span style="font-weight:400;color:var(--muted);">(optional)</span></label>
+        <textarea name="cover_letter" class="form-control"
+          placeholder="Briefly introduce yourself and explain why you're a great fit…"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full">Submit Application</button>
+    </form>
+
+    <div class="form-footer">
+      <a href="{{ url_for('view_jobs') }}">← Back to Jobs</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

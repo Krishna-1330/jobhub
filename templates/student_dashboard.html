@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Student Dashboard – PlaceHub{% endblock %}
+{% block content %}
+<div class="container">
+
+  <div class="page-header">
+    <div>
+      <h2>Welcome, {{ student.name }} 👋</h2>
+      <p>{{ student.branch }} &nbsp;•&nbsp; CGPA: {{ student.cgpa }} &nbsp;•&nbsp; {{ student.email }}</p>
+    </div>
+    <a href="{{ url_for('view_jobs') }}" class="btn btn-primary">Browse Jobs →</a>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-num">{{ applied_count }}</div>
+      <div class="stat-label">Applications Sent</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">{{ student.cgpa }}</div>
+      <div class="stat-label">CGPA</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">{% if student.resume %}✓{% else %}✗{% endif %}</div>
+      <div class="stat-label">Resume Uploaded</div>
+    </div>
+  </div>
+
+  <!-- Profile Info -->
+  <div class="table-wrap" style="margin-bottom:1.5rem;">
+    <h3>Profile Details</h3>
+    <div style="padding:1.2rem 1.5rem;">
+      <div class="info-row">
+        <div><strong>Name</strong><br/>{{ student.name }}</div>
+        <div><strong>Email</strong><br/>{{ student.email }}</div>
+        <div><strong>Phone</strong><br/>{{ student.phone }}</div>
+        <div><strong>Branch</strong><br/>{{ student.branch }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Resume Upload -->
+  <div class="table-wrap">
+    <h3>Resume</h3>
+    <div style="padding:1.2rem 1.5rem;">
+      {% if student.resume %}
+        <p style="color:var(--success);margin-bottom:.8rem;">✔ Resume on file: <strong>{{ student.resume }}</strong></p>
+      {% else %}
+        <p style="color:var(--muted);margin-bottom:.8rem;">No resume uploaded yet.</p>
+      {% endif %}
+      <form method="POST" action="{{ url_for('upload_resume') }}" enctype="multipart/form-data"
+            style="display:flex;gap:.8rem;align-items:center;flex-wrap:wrap;">
+        <input type="file" name="resume" accept=".pdf,.doc,.docx" class="form-control" style="max-width:320px;" required/>
+        <button type="submit" class="btn btn-outline btn-sm">Upload / Replace</button>
+      </form>
+    </div>
+  </div>
+
+  <div style="margin-top:1rem;">
+    <a href="{{ url_for('my_applications') }}" class="btn btn-outline">View My Applications</a>
+  </div>
+
+</div>
+{% endblock %}

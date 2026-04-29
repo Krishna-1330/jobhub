@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Admin Login – PlaceHub{% endblock %}
+{% block content %}
+<div class="container-sm">
+  <div class="form-card">
+    <h2>🔒 Admin Login</h2>
+    <p style="color:var(--muted);font-size:.9rem;margin-bottom:1.5rem;">
+      Restricted access. Use your administrator credentials.
+    </p>
+    <form method="POST" action="{{ url_for('admin_login') }}">
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" name="username" class="form-control" placeholder="admin" required/>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" name="password" class="form-control" placeholder="••••••••" required/>
+      </div>
+      <button type="submit" class="btn btn-warning btn-full">Login as Admin</button>
+    </form>
+    <div class="form-footer">
+      <a href="{{ url_for('index') }}">← Back to home</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

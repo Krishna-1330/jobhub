@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}PlaceHub{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
+</head>
+<body>
+
+<nav class="navbar">
+  <a class="navbar-brand" href="{{ url_for('index') }}">Place<span>Hub</span></a>
+  <div class="nav-links">
+    {% if session.get('user_type') == 'student' %}
+      <a href="{{ url_for('student_dashboard') }}">Dashboard</a>
+      <a href="{{ url_for('view_jobs') }}">Jobs</a>
+      <a href="{{ url_for('my_applications') }}">My Applications</a>
+      <a href="{{ url_for('logout') }}">Logout</a>
+    {% elif session.get('user_type') == 'recruiter' %}
+      <a href="{{ url_for('recruiter_dashboard') }}">Dashboard</a>
+      <a href="{{ url_for('post_job') }}">Post Job</a>
+      <a href="{{ url_for('view_applications') }}">Applications</a>
+      <a href="{{ url_for('logout') }}">Logout</a>
+    {% elif session.get('user_type') == 'admin' %}
+      <a href="{{ url_for('admin_dashboard') }}">Dashboard</a>
+      <span class="nav-badge">Admin</span>
+      <a href="{{ url_for('logout') }}">Logout</a>
+    {% else %}
+      <a href="{{ url_for('student_login') }}">Student</a>
+      <a href="{{ url_for('recruiter_login') }}">Recruiter</a>
+      <a href="{{ url_for('admin_login') }}">Admin</a>
+    {% endif %}
+  </div>
+</nav>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-wrap">
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+{% block content %}{% endblock %}
+
+</body>
+</html>
