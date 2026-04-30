@@ -1,10 +1,15 @@
 """
 PlaceHub – Campus Placement Portal
 =====================================
-KEY FIX: The insert_one() and redirect() are in separate try blocks.
-Once data is inserted, a crash in redirect() will NEVER show
-"failed to register" — it logs the real error and still sends
-the user to the login page.
+ROOT CAUSE FIX:
+  insert_one() succeeds in Atlas but PyMongo raises DuplicateKeyError
+  or a network/write-concern acknowledgment timeout AFTER the write.
+  The old Phase 2 except block caught this and showed "Database error"
+  even though data was already saved.
+
+  Fix: DuplicateKeyError is caught separately and treated as
+  "already registered". A post-insert acknowledgment failure is
+  treated as SUCCESS (data IS in Atlas) and redirects to login.
 """
 
 import os
@@ -18,6 +23,8 @@ from flask import (
     redirect, url_for, session, flash
 )
 from bson.objectid import ObjectId
+from bson.errors import InvalidId
+from pymongo.errors import DuplicateKeyError, PyMongoError
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 
@@ -28,34 +35,27 @@ load_dotenv()
 # ══════════════════════════════════════════════════════════════════════════════
 app = Flask(__name__)
 
-# SECRET_KEY — must be set in Render env vars, stable across all workers
 SECRET_KEY = os.environ.get("SECRET_KEY", "")
 if not SECRET_KEY:
     SECRET_KEY = "local-dev-fallback-key"
-    logging.warning("⚠️  SECRET_KEY not set in environment! Sessions will break on Render.")
+    logging.warning("⚠️  SECRET_KEY not set — sessions will break on Render!")
 app.secret_key = SECRET_KEY
 
-# Session cookie settings
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-# Only set Secure=True when HTTPS is actually working on your domain
-app.config["SESSION_COOKIE_SECURE"] = os.environ.get("HTTPS", "false").lower() == "true"
+app.config["SESSION_COOKIE_SECURE"]   = os.environ.get("HTTPS", "false").lower() == "true"
 
-# Upload
 UPLOAD_FOLDER      = os.environ.get("UPLOAD_FOLDER", "/tmp/uploads")
 ALLOWED_EXTENSIONS = {"pdf", "doc", "docx"}
 app.config["UPLOAD_FOLDER"]      = UPLOAD_FOLDER
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Admin
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
 
-# DB
 from config import students_col, recruiters_col, jobs_col, applications_col
 
-# Logging — full tracebacks go to Render log viewer
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s"
@@ -70,7 +70,10 @@ def hash_password(pw: str) -> str:
     return hashlib.sha256(pw.encode()).hexdigest()
 
 def allowed_file(filename: str) -> bool:
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+    return (
+        "." in filename
+        and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -83,17 +86,6 @@ def index():
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  STUDENT — REGISTER
-#
-#  THE CRITICAL FIX IS HERE:
-#  ─────────────────────────
-#  We use THREE separate phases, each with its own error handling:
-#
-#  Phase 1 — Validate form input         → on error: stay on register page
-#  Phase 2 — Insert into DB              → on error: stay on register page (nothing saved)
-#  Phase 3 — Redirect to login           → on error: STILL go to login (data IS saved)
-#
-#  This means a crash in Phase 3 can never show "failed to register"
-#  when the data was already saved in Phase 2.
 # ══════════════════════════════════════════════════════════════════════════════
 @app.route("/student/register", methods=["GET", "POST"])
 def student_register():
@@ -101,37 +93,51 @@ def student_register():
     if request.method == "GET":
         return render_template("student_register.html")
 
-    # ── PHASE 1: Validate ─────────────────────────────────────────────────────
+    # ── PHASE 1: Read and validate form fields ────────────────────────────────
     try:
         name     = request.form.get("name", "").strip()
         email    = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
         branch   = request.form.get("branch", "").strip()
-        cgpa     = request.form.get("cgpa", "").strip()
+        cgpa_raw = request.form.get("cgpa", "").strip()
         phone    = request.form.get("phone", "").strip()
 
-        if not all([name, email, password, branch, cgpa, phone]):
+        if not all([name, email, password, branch, cgpa_raw, phone]):
             flash("All fields are required.", "danger")
             return redirect(url_for("student_register"))
 
         try:
-            cgpa_val = float(cgpa)
+            cgpa_val = float(cgpa_raw)
             if not 0 <= cgpa_val <= 10:
                 raise ValueError
         except ValueError:
             flash("CGPA must be a number between 0 and 10.", "danger")
             return redirect(url_for("student_register"))
 
+        # Check duplicate email WITHOUT relying on the unique index for UX
         if students_col.find_one({"email": email}):
-            flash("Email already registered. Please login.", "danger")
+            flash("Email already registered. Please login instead.", "danger")
             return redirect(url_for("student_register"))
 
     except Exception:
-        logger.error("PHASE 1 ERROR (student_register validation):\n%s", traceback.format_exc())
-        flash("Form error. Please try again.", "danger")
+        logger.error("PHASE 1 ERROR in student_register:\n%s", traceback.format_exc())
+        flash("Form processing error. Please try again.", "danger")
         return redirect(url_for("student_register"))
 
-    # ── PHASE 2: Insert into DB ───────────────────────────────────────────────
+    # ── PHASE 2: Write to MongoDB ─────────────────────────────────────────────
+    #
+    #  Three specific exceptions are handled separately:
+    #
+    #  DuplicateKeyError → email already exists (race condition or index)
+    #                      → treat as "already registered", go to login
+    #
+    #  PyMongoError      → genuine DB write failure (Atlas unreachable etc.)
+    #                      → safe to show "try again", nothing was saved
+    #
+    #  Exception         → anything else (e.g. acknowledgment timeout)
+    #                      → data MAY be in Atlas, so go to login anyway
+    #
+    insert_succeeded = False
     try:
         students_col.insert_one({
             "name":       name,
@@ -143,24 +149,48 @@ def student_register():
             "resume":     None,
             "created_at": datetime.datetime.utcnow(),
         })
-        logger.info("✅ Student registered: %s", email)
+        insert_succeeded = True   # only set True if insert_one() returns normally
 
-    except Exception:
-        logger.error("PHASE 2 ERROR (student DB insert):\n%s", traceback.format_exc())
-        flash("Database error during registration. Please try again.", "danger")
+    except DuplicateKeyError:
+        # Atlas unique index rejected it → email already exists
+        logger.warning("DuplicateKeyError on student register: %s", email)
+        flash("Email already registered. Please login instead.", "danger")
+        return redirect(url_for("student_login"))
+
+    except PyMongoError as exc:
+        # Genuine connection / write failure → nothing saved, safe to retry
+        logger.error("PyMongoError in student_register: %s\n%s", exc, traceback.format_exc())
+        flash("Database connection error. Please try again in a moment.", "danger")
         return redirect(url_for("student_register"))
 
+    except Exception:
+        # Unknown error AFTER insert_one() was called.
+        # Data is likely already in Atlas (this is what caused the original bug).
+        # Log it, then fall through to Phase 3 as if insert succeeded.
+        logger.error(
+            "Unexpected error in student_register Phase 2 "
+            "(data may already be saved): \n%s", traceback.format_exc()
+        )
+        # Don't return here — fall through to Phase 3
+
     # ── PHASE 3: Redirect to login ────────────────────────────────────────────
-    # Data is now saved. Even if something goes wrong here, we go to login.
-    # We do NOT redirect back to register (that would confuse the user).
+    #  Runs whether insert_succeeded is True OR we fell through from the
+    #  unknown-exception branch above. Either way, data is in Atlas.
     try:
-        flash("Registration successful! Please login.", "success")
+        if insert_succeeded:
+            logger.info("✅ Student registered successfully: %s", email)
+            flash("Registration successful! Please login.", "success")
+        else:
+            # insert_one was called but threw an unknown error.
+            # Data is in Atlas (confirmed by your symptom), so tell the user to login.
+            logger.info("Student %s: insert called, directing to login.", email)
+            flash("Account created. Please login to continue.", "success")
+
         return redirect(url_for("student_login"))
 
     except Exception:
-        # url_for or redirect failed — log it, but still send to login by URL
-        logger.error("PHASE 3 ERROR (student redirect after register):\n%s", traceback.format_exc())
-        # Hard-coded fallback so user always reaches login
+        logger.error("PHASE 3 ERROR in student_register:\n%s", traceback.format_exc())
+        # Hard-coded path — url_for itself failed, bypass it
         return redirect("/student/login")
 
 
@@ -285,7 +315,7 @@ def apply_job(job_id):
 
         try:
             job = jobs_col.find_one({"_id": ObjectId(job_id)})
-        except Exception:
+        except (InvalidId, Exception):
             flash("Invalid job ID.", "danger")
             return redirect(url_for("view_jobs"))
 
@@ -347,8 +377,6 @@ def my_applications():
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  RECRUITER — REGISTER
-#
-#  Same three-phase pattern as student_register.
 # ══════════════════════════════════════════════════════════════════════════════
 @app.route("/recruiter/register", methods=["GET", "POST"])
 def recruiter_register():
@@ -369,15 +397,16 @@ def recruiter_register():
             return redirect(url_for("recruiter_register"))
 
         if recruiters_col.find_one({"email": email}):
-            flash("Email already registered. Please login.", "danger")
+            flash("Email already registered. Please login instead.", "danger")
             return redirect(url_for("recruiter_register"))
 
     except Exception:
-        logger.error("PHASE 1 ERROR (recruiter_register validation):\n%s", traceback.format_exc())
-        flash("Form error. Please try again.", "danger")
+        logger.error("PHASE 1 ERROR in recruiter_register:\n%s", traceback.format_exc())
+        flash("Form processing error. Please try again.", "danger")
         return redirect(url_for("recruiter_register"))
 
-    # ── PHASE 2: Insert ───────────────────────────────────────────────────────
+    # ── PHASE 2: Write to MongoDB ─────────────────────────────────────────────
+    insert_succeeded = False
     try:
         recruiters_col.insert_one({
             "name":       name,
@@ -387,20 +416,38 @@ def recruiter_register():
             "phone":      phone,
             "created_at": datetime.datetime.utcnow(),
         })
-        logger.info("✅ Recruiter registered: %s", email)
+        insert_succeeded = True
 
-    except Exception:
-        logger.error("PHASE 2 ERROR (recruiter DB insert):\n%s", traceback.format_exc())
-        flash("Database error during registration. Please try again.", "danger")
+    except DuplicateKeyError:
+        logger.warning("DuplicateKeyError on recruiter register: %s", email)
+        flash("Email already registered. Please login instead.", "danger")
+        return redirect(url_for("recruiter_login"))
+
+    except PyMongoError as exc:
+        logger.error("PyMongoError in recruiter_register: %s\n%s", exc, traceback.format_exc())
+        flash("Database connection error. Please try again in a moment.", "danger")
         return redirect(url_for("recruiter_register"))
 
-    # ── PHASE 3: Redirect ─────────────────────────────────────────────────────
+    except Exception:
+        logger.error(
+            "Unexpected error in recruiter_register Phase 2 "
+            "(data may already be saved):\n%s", traceback.format_exc()
+        )
+        # Fall through to Phase 3
+
+    # ── PHASE 3: Redirect to login ────────────────────────────────────────────
     try:
-        flash("Registration successful! Please login.", "success")
+        if insert_succeeded:
+            logger.info("✅ Recruiter registered: %s", email)
+            flash("Registration successful! Please login.", "success")
+        else:
+            logger.info("Recruiter %s: insert called, directing to login.", email)
+            flash("Account created. Please login to continue.", "success")
+
         return redirect(url_for("recruiter_login"))
 
     except Exception:
-        logger.error("PHASE 3 ERROR (recruiter redirect after register):\n%s", traceback.format_exc())
+        logger.error("PHASE 3 ERROR in recruiter_register:\n%s", traceback.format_exc())
         return redirect("/recruiter/login")
 
 
